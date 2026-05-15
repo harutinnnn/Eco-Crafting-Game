@@ -58,7 +58,7 @@ void seedCatalog().catch((error: unknown) => {
   console.error("Database seed failed:", error);
 });
 
-const action = async (userId: string, handler: () => Promise<void>) => {
+const action = async (userId: number, handler: () => Promise<void>) => {
   try {
     await handler();
     return { ok: true, data: await getGameSnapshot(userId) };
@@ -95,32 +95,32 @@ app.get("/api/game", requireAuth, async (request, response) => {
 });
 
 app.post("/api/fields/plant", requireAuth, async (request, response) => {
-  const body = z.object({ fieldId: z.string(), seedItemId: z.string() }).parse(request.body);
+  const body = z.object({ fieldId: z.coerce.number().int(), seedItemId: z.coerce.number().int() }).parse(request.body);
   response.json(await action(request.userId!, () => plantSeed(request.userId!, body.fieldId, body.seedItemId)));
 });
 
 app.post("/api/fields/harvest", requireAuth, async (request, response) => {
-  const body = z.object({ fieldId: z.string() }).parse(request.body);
+  const body = z.object({ fieldId: z.coerce.number().int() }).parse(request.body);
   response.json(await action(request.userId!, () => harvestField(request.userId!, body.fieldId)));
 });
 
 app.post("/api/craft", requireAuth, async (request, response) => {
-  const body = z.object({ recipeId: z.string() }).parse(request.body);
+  const body = z.object({ recipeId: z.coerce.number().int() }).parse(request.body);
   response.json(await action(request.userId!, () => craftRecipe(request.userId!, body.recipeId)));
 });
 
 app.post("/api/consume", requireAuth, async (request, response) => {
-  const body = z.object({ itemId: z.string() }).parse(request.body);
+  const body = z.object({ itemId: z.coerce.number().int() }).parse(request.body);
   response.json(await action(request.userId!, () => consumeFood(request.userId!, body.itemId)));
 });
 
 app.post("/api/animals/collect", requireAuth, async (request, response) => {
-  const body = z.object({ animalId: z.string() }).parse(request.body);
+  const body = z.object({ animalId: z.coerce.number().int() }).parse(request.body);
   response.json(await action(request.userId!, () => collectAnimalProduct(request.userId!, body.animalId)));
 });
 
 app.post("/api/shop/seed", requireAuth, async (request, response) => {
-  const body = z.object({ itemId: z.string() }).parse(request.body);
+  const body = z.object({ itemId: z.coerce.number().int() }).parse(request.body);
   response.json(await action(request.userId!, () => buySeed(request.userId!, body.itemId)));
 });
 
@@ -135,7 +135,7 @@ app.post("/api/marketplace/buy", requireAuth, async (request, response) => {
 });
 
 app.post("/api/marketplace/list", requireAuth, async (request, response) => {
-  const body = z.object({ itemId: z.string(), quantity: z.number().int().positive(), coinPrice: z.number().int().positive() }).parse(request.body);
+  const body = z.object({ itemId: z.coerce.number().int(), quantity: z.number().int().positive(), coinPrice: z.number().int().positive() }).parse(request.body);
   response.json(await action(request.userId!, () => createMarketplaceListing(request.userId!, body)));
 });
 
@@ -144,7 +144,8 @@ app.get("/api/admin", requireAdmin, async (_request, response) => {
 });
 
 const itemSchema = z.object({
-  id: z.string().min(1),
+  id: z.coerce.number().int().optional(),
+  code: z.string().min(1),
   name: z.string().min(1),
   category: z.enum(["seed", "crop", "food", "animal", "animal_product", "material", "tool", "clothing"]),
   minLevel: z.number().int().min(1),
@@ -155,7 +156,8 @@ const itemSchema = z.object({
 });
 
 const buildingSchema = z.object({
-  id: z.string().min(1),
+  id: z.coerce.number().int().optional(),
+  code: z.string().min(1),
   name: z.string().min(1),
   type: z.enum(["bakery", "restaurant", "factory", "barn", "field"]),
   minLevel: z.number().int().min(1),
@@ -165,18 +167,20 @@ const buildingSchema = z.object({
 });
 
 const animalSchema = z.object({
-  id: z.string().min(1),
+  id: z.coerce.number().int().optional(),
+  code: z.string().min(1),
   name: z.string().min(1),
-  productItemId: z.string().min(1),
+  productItemId: z.coerce.number().int(),
   minLevel: z.number().int().min(1),
   energyCost: z.number().int().min(0),
   xpReward: z.number().int().min(0),
   iconUrl: z.string().nullable().optional()
 });
 
-const recipeIngredientSchema = z.object({ itemId: z.string().min(1), quantity: z.number().int().positive() });
+const recipeIngredientSchema = z.object({ itemId: z.coerce.number().int(), quantity: z.number().int().positive() });
 const recipeSchema = z.object({
-  id: z.string().min(1),
+  id: z.coerce.number().int().optional(),
+  code: z.string().min(1),
   name: z.string().min(1),
   buildingType: z.enum(["bakery", "restaurant", "factory", "barn", "field"]),
   minLevel: z.number().int().min(1),
@@ -218,18 +222,18 @@ app.post("/api/admin/profiles/:userId", requireAdmin, async (request, response) 
       gems: z.number().int().min(0).optional()
     })
     .parse(request.body);
-  await updateProfile(String(request.params.userId), body);
+  await updateProfile(Number(request.params.userId), body);
   response.json({ ok: true, data: await getAdminSnapshot() });
 });
 
 app.post("/api/admin/users/:userId", requireAdmin, async (request, response) => {
   const body = z.object({ username: z.string().min(1), email: z.string().email(), isAdmin: z.boolean() }).parse(request.body);
-  await updateUser(String(request.params.userId), body);
+  await updateUser(Number(request.params.userId), body);
   response.json({ ok: true, data: await getAdminSnapshot() });
 });
 
 app.post("/api/admin/inventory", requireAdmin, async (request, response) => {
-  const body = z.object({ userId: z.string().uuid(), itemId: z.string().min(1), quantity: z.number().int().min(0) }).parse(request.body);
+  const body = z.object({ userId: z.coerce.number().int(), itemId: z.coerce.number().int(), quantity: z.number().int().min(0) }).parse(request.body);
   await setInventory(body);
   response.json({ ok: true, data: await getAdminSnapshot() });
 });
@@ -238,8 +242,8 @@ app.post("/api/admin/marketplace", requireAdmin, async (request, response) => {
   const body = z
     .object({
       id: z.string().uuid().optional(),
-      sellerId: z.string().uuid(),
-      itemId: z.string().min(1),
+      sellerId: z.coerce.number().int(),
+      itemId: z.coerce.number().int(),
       quantity: z.number().int().positive(),
       coinPrice: z.number().int().positive()
     })
@@ -250,7 +254,7 @@ app.post("/api/admin/marketplace", requireAdmin, async (request, response) => {
 
 app.post("/api/admin/upload-icon", requireAdmin, upload.single("icon"), async (request, response) => {
   const entity = z.enum(["items", "buildings", "animals"]).parse(request.body.entity);
-  const id = z.string().min(1).parse(request.body.id);
+  const id = z.coerce.number().int().parse(request.body.id);
   if (!request.file) {
     response.status(400).json({ error: "Icon file is required." });
     return;

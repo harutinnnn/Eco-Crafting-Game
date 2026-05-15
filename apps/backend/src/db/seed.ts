@@ -19,16 +19,37 @@ const adminGoogleId = "admin-default";
 const adminEmail = "admin@eco-crafting.local";
 
 export const seedCatalog = async () => {
-  await db.insert(itemsTable).values(items).onConflictDoNothing();
+  await db
+    .insert(itemsTable)
+    .values(items.map(({ id: _id, ...item }) => item))
+    .onConflictDoNothing();
   await db.insert(buildings).values(buildingsData).onConflictDoNothing();
-  await db.insert(animals).values(animalsData).onConflictDoNothing();
+
+  const itemRows = await db.select({ id: itemsTable.id, code: itemsTable.code }).from(itemsTable);
+  const itemIdByCode = new Map(itemRows.map((item) => [item.code, item.id]));
+
+  await db
+    .insert(animals)
+    .values(
+      animalsData.map(({ productItemCode, ...animal }) => ({
+        ...animal,
+        productItemId: itemIdByCode.get(productItemCode)!
+      }))
+    )
+    .onConflictDoNothing();
+
   await db
     .insert(recipesTable)
     .values(
       recipes.map((recipe) => ({
-        ...recipe,
-        ingredients: recipe.ingredients,
-        outputs: recipe.outputs,
+        code: recipe.code,
+        name: recipe.name,
+        buildingType: recipe.buildingType as "bakery" | "restaurant" | "factory" | "barn" | "field",
+        minLevel: recipe.minLevel,
+        energyCost: recipe.energyCost,
+        xpReward: recipe.xpReward,
+        ingredients: recipe.ingredients.map((entry) => ({ itemId: itemIdByCode.get(String(entry.itemId))!, quantity: entry.quantity })),
+        outputs: recipe.outputs.map((entry) => ({ itemId: itemIdByCode.get(String(entry.itemId))!, quantity: entry.quantity })),
         createdByAdmin: true
       }))
     )
@@ -40,11 +61,12 @@ export const seedCatalog = async () => {
       username: "Admin",
       email: adminEmail,
       googleId: adminGoogleId,
-      avatarUrl: null
+      avatarUrl: null,
+      isAdmin: true
     })
     .onConflictDoUpdate({
       target: users.googleId,
-      set: { username: "Admin", email: adminEmail }
+      set: { username: "Admin", email: adminEmail, isAdmin: true }
     })
     .returning();
 
@@ -53,13 +75,13 @@ export const seedCatalog = async () => {
   const existingListings = await db.select({ id: marketplaceListings.id }).from(marketplaceListings).limit(1);
   if (existingListings.length === 0) {
     await db.insert(marketplaceListings).values([
-      { sellerId: admin.id, itemId: "milk", quantity: 2, coinPrice: 40 },
-      { sellerId: admin.id, itemId: "wool", quantity: 4, coinPrice: 70 }
+      { sellerId: admin.id, itemId: itemIdByCode.get("milk")!, quantity: 2, coinPrice: 40 },
+      { sellerId: admin.id, itemId: itemIdByCode.get("wool")!, quantity: 4, coinPrice: 70 }
     ]);
   }
 };
 
-export const initializePlayerState = async (userId: string) => {
+export const initializePlayerState = async (userId: number) => {
   await db.insert(profiles).values({ userId }).onConflictDoNothing();
 
   const existingFields = await db.select({ id: fields.id }).from(fields).where(eq(fields.userId, userId)).limit(1);
@@ -67,13 +89,20 @@ export const initializePlayerState = async (userId: string) => {
     await db.insert(fields).values(Array.from({ length: 4 }, () => ({ userId })));
   }
 
-  await db.insert(userBuildings).values({ userId, buildingId: "bakery" }).onConflictDoNothing();
-  await db.insert(userAnimals).values({ userId, animalId: "chicken", quantity: 2 }).onConflictDoNothing();
+  const [bakery] = await db.select({ id: buildings.id }).from(buildings).where(eq(buildings.code, "bakery"));
+  const [chicken] = await db.select({ id: animals.id }).from(animals).where(eq(animals.code, "chicken"));
+  if (bakery) await db.insert(userBuildings).values({ userId, buildingId: bakery.id }).onConflictDoNothing();
+  if (chicken) await db.insert(userAnimals).values({ userId, animalId: chicken.id, quantity: 2 }).onConflictDoNothing();
+
+  const itemRows = await db.select({ id: itemsTable.id, code: itemsTable.code }).from(itemsTable);
+  const itemIdByCode = new Map(itemRows.map((item) => [item.code, item.id]));
 
   for (const entry of starterInventory) {
+    const itemId = itemIdByCode.get(entry.itemId);
+    if (!itemId) continue;
     await db
       .insert(inventory)
-      .values({ userId, itemId: entry.itemId, quantity: entry.quantity })
+      .values({ userId, itemId, quantity: entry.quantity })
       .onConflictDoNothing();
   }
 };

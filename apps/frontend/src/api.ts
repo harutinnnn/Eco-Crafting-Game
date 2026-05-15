@@ -6,12 +6,12 @@ export interface GameSnapshot {
   fields: FieldPlot[];
   items: GameItem[];
   recipes: Recipe[];
-  buildingCatalog: Array<{ id: string; name: string; type: BuildingType; minLevel: number; coinCost: number; gemCost: number; iconUrl: string | null }>;
+  buildingCatalog: Array<{ id: number; code: string; name: string; type: BuildingType; minLevel: number; coinCost: number; gemCost: number; iconUrl: string | null }>;
   buildings: BuildingType[];
   animals: Array<{
-    animalId: string;
+    animalId: number;
     name: string;
-    productItemId: string;
+    productItemId: number;
     quantity: number;
     minLevel: number;
     iconUrl: string | null;
@@ -19,7 +19,7 @@ export interface GameSnapshot {
   marketplace: Array<{
     id: string;
     seller: string;
-    itemId: string;
+    itemId: number;
     quantity: number;
     coinPrice: number;
   }>;
@@ -27,7 +27,7 @@ export interface GameSnapshot {
 }
 
 export interface AuthUser {
-  id: string;
+  id: number;
   username: string;
   email: string;
   avatarUrl: string | null;
@@ -78,15 +78,15 @@ export const logout = async () => {
 export interface AdminSnapshot {
   items: Array<GameItem>;
   recipes: Array<Recipe>;
-  buildings: Array<{ id: string; name: string; type: BuildingType; minLevel: number; coinCost: number; gemCost: number; iconUrl: string | null }>;
-  animals: Array<{ id: string; name: string; productItemId: string; minLevel: number; energyCost: number; xpReward: number; iconUrl: string | null }>;
-  users: Array<{ id: string; username: string; email: string; googleId: string; avatarUrl: string | null; isAdmin: boolean; createdAt: string }>;
-  profiles: Array<{ userId: string; level: number; xp: number; energy: number; maxEnergy: number; coins: number; gems: number }>;
-  inventory: Array<{ id: string; userId: string; itemId: string; quantity: number }>;
-  fields: Array<FieldPlot & { userId: string }>;
-  userBuildings: Array<{ id: string; userId: string; buildingId: string }>;
-  userAnimals: Array<{ id: string; userId: string; animalId: string; quantity: number }>;
-  marketplace: Array<{ id: string; sellerId: string; itemId: string; quantity: number; coinPrice: number; createdAt: string }>;
+  buildings: Array<{ id: number; code: string; name: string; type: BuildingType; minLevel: number; coinCost: number; gemCost: number; iconUrl: string | null }>;
+  animals: Array<{ id: number; code: string; name: string; productItemId: number; minLevel: number; energyCost: number; xpReward: number; iconUrl: string | null }>;
+  users: Array<{ id: number; username: string; email: string; googleId: string; avatarUrl: string | null; isAdmin: boolean; createdAt: string }>;
+  profiles: Array<{ userId: number; level: number; xp: number; energy: number; maxEnergy: number; coins: number; gems: number }>;
+  inventory: Array<{ id: string; userId: number; itemId: number; quantity: number }>;
+  fields: Array<FieldPlot & { userId: number }>;
+  userBuildings: Array<{ id: string; userId: number; buildingId: number }>;
+  userAnimals: Array<{ id: string; userId: number; animalId: number; quantity: number }>;
+  marketplace: Array<{ id: string; sellerId: number; itemId: number; quantity: number; coinPrice: number; createdAt: string }>;
 }
 
 export const fetchAdmin = async () => {

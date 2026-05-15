@@ -18,18 +18,18 @@ import { seedCropMap, seedGrowSeconds } from "./data";
 
 const xpForNextLevel = (level: number) => level * 100;
 
-const getProfile = async (userId: string) => {
+const getProfile = async (userId: number) => {
   const [profile] = await db.select().from(profiles).where(eq(profiles.userId, userId));
   if (!profile) throw new Error("Player profile was not initialized.");
   return profile;
 };
 
-const getItem = async (itemId: string) => {
+const getItem = async (itemId: number) => {
   const [item] = await db.select().from(items).where(eq(items.id, itemId));
   return item;
 };
 
-const addXp = async (userId: string, amount: number) => {
+const addXp = async (userId: number, amount: number) => {
   const profile = await getProfile(userId);
   let xp = profile.xp + amount;
   let level = profile.level;
@@ -46,7 +46,7 @@ const addXp = async (userId: string, amount: number) => {
   await db.update(profiles).set({ xp, level, energy, maxEnergy }).where(eq(profiles.userId, userId));
 };
 
-const spendEnergy = async (userId: string, amount: number) => {
+const spendEnergy = async (userId: number, amount: number) => {
   const profile = await getProfile(userId);
   if (profile.energy < amount) {
     throw new Error("Not enough energy.");
@@ -54,7 +54,7 @@ const spendEnergy = async (userId: string, amount: number) => {
   await db.update(profiles).set({ energy: profile.energy - amount }).where(eq(profiles.userId, userId));
 };
 
-const inventoryQuantity = async (userId: string, itemId: string) => {
+const inventoryQuantity = async (userId: number, itemId: number) => {
   const [entry] = await db
     .select({ quantity: inventory.quantity })
     .from(inventory)
@@ -62,7 +62,7 @@ const inventoryQuantity = async (userId: string, itemId: string) => {
   return entry?.quantity ?? 0;
 };
 
-const addInventory = async (userId: string, itemId: string, quantity: number) => {
+const addInventory = async (userId: number, itemId: number, quantity: number) => {
   await db
     .insert(inventory)
     .values({ userId, itemId, quantity })
@@ -72,7 +72,7 @@ const addInventory = async (userId: string, itemId: string, quantity: number) =>
     });
 };
 
-const removeInventory = async (userId: string, itemId: string, quantity: number) => {
+const removeInventory = async (userId: number, itemId: number, quantity: number) => {
   const current = await inventoryQuantity(userId, itemId);
   if (current < quantity) {
     throw new Error(`Not enough ${itemId}.`);
@@ -89,14 +89,14 @@ const removeInventory = async (userId: string, itemId: string, quantity: number)
     .where(and(eq(inventory.userId, userId), eq(inventory.itemId, itemId)));
 };
 
-const requireLevel = async (userId: string, minLevel: number) => {
+const requireLevel = async (userId: number, minLevel: number) => {
   const profile = await getProfile(userId);
   if (profile.level < minLevel) {
     throw new Error(`Requires level ${minLevel}.`);
   }
 };
 
-const hasIngredients = async (userId: string, ingredients: RecipeIngredient[]) => {
+const hasIngredients = async (userId: number, ingredients: RecipeIngredient[]) => {
   for (const ingredient of ingredients) {
     if ((await inventoryQuantity(userId, ingredient.itemId)) < ingredient.quantity) {
       return false;
@@ -105,7 +105,7 @@ const hasIngredients = async (userId: string, ingredients: RecipeIngredient[]) =
   return true;
 };
 
-export const getGameSnapshot = async (userId: string) => {
+export const getGameSnapshot = async (userId: number) => {
   const [user] = await db.select().from(users).where(eq(users.id, userId));
   const profile = await getProfile(userId);
   const inventoryRows = await db.select().from(inventory).where(eq(inventory.userId, userId));
@@ -163,6 +163,7 @@ export const getGameSnapshot = async (userId: string) => {
     items: itemRows,
     recipes: recipeRows.map((recipe) => ({
       id: recipe.id,
+      code: recipe.code,
       name: recipe.name,
       buildingType: recipe.buildingType,
       minLevel: recipe.minLevel,
@@ -185,7 +186,7 @@ export const getGameSnapshot = async (userId: string) => {
   };
 };
 
-export const plantSeed = async (userId: string, fieldId: string, seedItemId: string) => {
+export const plantSeed = async (userId: number, fieldId: number, seedItemId: number) => {
   const seed = await getItem(seedItemId);
   if (!seed || seed.category !== "seed") throw new Error("Unknown seed.");
   await requireLevel(userId, seed.minLevel);
@@ -197,8 +198,10 @@ export const plantSeed = async (userId: string, fieldId: string, seedItemId: str
   if (!field) throw new Error("Unknown field.");
   if (field.seedItemId) throw new Error("Field is already planted.");
 
-  const cropItemId = seedCropMap[seedItemId];
-  if (!cropItemId) throw new Error("Seed has no crop mapping.");
+  const cropCode = seedCropMap[seed.code];
+  if (!cropCode) throw new Error("Seed has no crop mapping.");
+  const [crop] = await db.select({ id: items.id }).from(items).where(eq(items.code, cropCode));
+  if (!crop) throw new Error("Seed crop is not configured.");
 
   await spendEnergy(userId, 2);
   await removeInventory(userId, seedItemId, 1);
@@ -208,15 +211,15 @@ export const plantSeed = async (userId: string, fieldId: string, seedItemId: str
     .update(fields)
     .set({
       seedItemId,
-      cropItemId,
+      cropItemId: crop.id,
       plantedAt: now,
-      readyAt: new Date(now.getTime() + seedGrowSeconds[seedItemId] * 1000)
+      readyAt: new Date(now.getTime() + seedGrowSeconds[seed.code] * 1000)
     })
     .where(and(eq(fields.id, fieldId), eq(fields.userId, userId)));
   await addXp(userId, 5);
 };
 
-export const harvestField = async (userId: string, fieldId: string) => {
+export const harvestField = async (userId: number, fieldId: number) => {
   const [field] = await db
     .select()
     .from(fields)
@@ -233,7 +236,7 @@ export const harvestField = async (userId: string, fieldId: string) => {
   await addXp(userId, 10);
 };
 
-export const craftRecipe = async (userId: string, recipeId: string) => {
+export const craftRecipe = async (userId: number, recipeId: number) => {
   const [recipe] = await db.select().from(recipes).where(eq(recipes.id, recipeId));
   if (!recipe) throw new Error("Unknown recipe.");
   await requireLevel(userId, recipe.minLevel);
@@ -260,7 +263,7 @@ export const craftRecipe = async (userId: string, recipeId: string) => {
   await addXp(userId, recipe.xpReward);
 };
 
-export const consumeFood = async (userId: string, itemId: string) => {
+export const consumeFood = async (userId: number, itemId: number) => {
   const item = await getItem(itemId);
   if (!item || item.category !== "food" || !item.energyRestore) {
     throw new Error("This item cannot restore energy.");
@@ -273,7 +276,7 @@ export const consumeFood = async (userId: string, itemId: string) => {
     .where(eq(profiles.userId, userId));
 };
 
-export const collectAnimalProduct = async (userId: string, animalId: string) => {
+export const collectAnimalProduct = async (userId: number, animalId: number) => {
   const [animal] = await db
     .select({
       productItemId: animals.productItemId,
@@ -290,7 +293,7 @@ export const collectAnimalProduct = async (userId: string, animalId: string) => 
   await addXp(userId, 8 * animal.quantity);
 };
 
-export const buySeed = async (userId: string, itemId: string) => {
+export const buySeed = async (userId: number, itemId: number) => {
   const item = await getItem(itemId);
   if (!item || item.category !== "seed") throw new Error("Shop item is unavailable.");
   await requireLevel(userId, item.minLevel);
@@ -301,7 +304,7 @@ export const buySeed = async (userId: string, itemId: string) => {
   await addInventory(userId, itemId, 1);
 };
 
-export const buyBuilding = async (userId: string, buildingType: BuildingType) => {
+export const buyBuilding = async (userId: number, buildingType: BuildingType) => {
   const [building] = await db.select().from(buildings).where(eq(buildings.type, buildingType));
   if (!building) throw new Error("Building is unavailable.");
   await requireLevel(userId, building.minLevel);
@@ -320,7 +323,7 @@ export const buyBuilding = async (userId: string, buildingType: BuildingType) =>
   await db.insert(userBuildings).values({ userId, buildingId: building.id }).onConflictDoNothing();
 };
 
-export const buyMarketplaceListing = async (userId: string, listingId: string) => {
+export const buyMarketplaceListing = async (userId: number, listingId: string) => {
   const [listing] = await db.select().from(marketplaceListings).where(eq(marketplaceListings.id, listingId));
   if (!listing) throw new Error("Listing not found.");
   const item = await getItem(listing.itemId);
@@ -334,7 +337,7 @@ export const buyMarketplaceListing = async (userId: string, listingId: string) =
 };
 
 export const createMarketplaceListing = async (
-  userId: string,
+  userId: number,
   payload: Pick<InventoryEntry, "itemId" | "quantity"> & { coinPrice: number }
 ) => {
   const item = await getItem(payload.itemId);

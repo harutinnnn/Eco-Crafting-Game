@@ -13,7 +13,8 @@ export type ItemCategory =
 export type BuildingType = "bakery" | "restaurant" | "factory" | "barn" | "field";
 
 export interface GameItem {
-  id: string;
+  id: number;
+  code: string;
   name: string;
   category: ItemCategory;
   minLevel: number;
@@ -24,12 +25,12 @@ export interface GameItem {
 }
 
 export interface InventoryEntry {
-  itemId: string;
+  itemId: number;
   quantity: number;
 }
 
 export interface PlayerProfile {
-  id: string;
+  id: number;
   username: string;
   level: number;
   xp: number;
@@ -40,12 +41,13 @@ export interface PlayerProfile {
 }
 
 export interface RecipeIngredient {
-  itemId: string;
+  itemId: number;
   quantity: number;
 }
 
 export interface Recipe {
-  id: string;
+  id: number;
+  code: string;
   name: string;
   buildingType: BuildingType;
   minLevel: number;
@@ -56,9 +58,9 @@ export interface Recipe {
 }
 
 export interface FieldPlot {
-  id: string;
-  cropItemId: string | null;
-  seedItemId: string | null;
+  id: number;
+  cropItemId: number | null;
+  seedItemId: number | null;
   plantedAt: string | null;
   readyAt: string | null;
 }

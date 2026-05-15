@@ -14,7 +14,7 @@ interface GoogleProfile {
 
 declare module "express-serve-static-core" {
   interface Request {
-    userId?: string;
+    userId?: number;
     isAdmin?: boolean;
   }
 }
@@ -57,7 +57,7 @@ const clearCookie = (response: Response, name: string) => {
 
 const frontendOrigin = () => process.env.FRONTEND_ORIGIN ?? "http://localhost:5173";
 
-const createSession = async (userId: string, response: Response) => {
+const createSession = async (userId: number, response: Response) => {
   const sessionToken = crypto.randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + sessionDays * 24 * 60 * 60 * 1000);
   await db.insert(sessions).values({

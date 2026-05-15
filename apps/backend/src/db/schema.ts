@@ -4,6 +4,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  serial,
   uniqueIndex,
   text,
   timestamp,
@@ -30,7 +31,7 @@ export const buildingType = pgEnum("building_type", [
 ]);
 
 export const users = pgTable("users", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   email: text("email").notNull().unique(),
   googleId: text("google_id").notNull().unique(),
@@ -41,14 +42,14 @@ export const users = pgTable("users", {
 
 export const sessions = pgTable("sessions", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
   tokenHash: text("token_hash").notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
 export const profiles = pgTable("profiles", {
-  userId: uuid("user_id").references(() => users.id).primaryKey(),
+  userId: integer("user_id").references(() => users.id).primaryKey(),
   level: integer("level").default(1).notNull(),
   xp: integer("xp").default(0).notNull(),
   energy: integer("energy").default(50).notNull(),
@@ -58,7 +59,8 @@ export const profiles = pgTable("profiles", {
 });
 
 export const items = pgTable("items", {
-  id: text("id").primaryKey(),
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
   name: text("name").notNull(),
   category: itemCategory("category").notNull(),
   minLevel: integer("min_level").default(1).notNull(),
@@ -72,24 +74,25 @@ export const inventory = pgTable(
   "inventory",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id").references(() => users.id).notNull(),
-    itemId: text("item_id").references(() => items.id).notNull(),
+    userId: integer("user_id").references(() => users.id).notNull(),
+    itemId: integer("item_id").references(() => items.id).notNull(),
     quantity: integer("quantity").notNull()
   },
   (table) => [uniqueIndex("inventory_user_item_unique").on(table.userId, table.itemId)]
 );
 
 export const fields = pgTable("fields", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
-  cropItemId: text("crop_item_id").references(() => items.id),
-  seedItemId: text("seed_item_id").references(() => items.id),
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  cropItemId: integer("crop_item_id").references(() => items.id),
+  seedItemId: integer("seed_item_id").references(() => items.id),
   plantedAt: timestamp("planted_at"),
   readyAt: timestamp("ready_at")
 });
 
 export const buildings = pgTable("buildings", {
-  id: text("id").primaryKey(),
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
   name: text("name").notNull(),
   type: buildingType("type").notNull(),
   minLevel: integer("min_level").default(1).notNull(),
@@ -102,14 +105,15 @@ export const userBuildings = pgTable(
   "user_buildings",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id").references(() => users.id).notNull(),
-    buildingId: text("building_id").references(() => buildings.id).notNull()
+    userId: integer("user_id").references(() => users.id).notNull(),
+    buildingId: integer("building_id").references(() => buildings.id).notNull()
   },
   (table) => [uniqueIndex("user_buildings_user_building_unique").on(table.userId, table.buildingId)]
 );
 
 export const recipes = pgTable("recipes", {
-  id: text("id").primaryKey(),
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
   name: text("name").notNull(),
   buildingType: buildingType("building_type").notNull(),
   minLevel: integer("min_level").default(1).notNull(),
@@ -121,9 +125,10 @@ export const recipes = pgTable("recipes", {
 });
 
 export const animals = pgTable("animals", {
-  id: text("id").primaryKey(),
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
   name: text("name").notNull(),
-  productItemId: text("product_item_id").references(() => items.id).notNull(),
+  productItemId: integer("product_item_id").references(() => items.id).notNull(),
   minLevel: integer("min_level").default(1).notNull(),
   energyCost: integer("energy_cost").default(2).notNull(),
   xpReward: integer("xp_reward").default(2).notNull(),
@@ -134,8 +139,8 @@ export const userAnimals = pgTable(
   "user_animals",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id").references(() => users.id).notNull(),
-    animalId: text("animal_id").references(() => animals.id).notNull(),
+    userId: integer("user_id").references(() => users.id).notNull(),
+    animalId: integer("animal_id").references(() => animals.id).notNull(),
     quantity: integer("quantity").default(1).notNull()
   },
   (table) => [uniqueIndex("user_animals_user_animal_unique").on(table.userId, table.animalId)]
@@ -143,9 +148,9 @@ export const userAnimals = pgTable(
 
 export const shopItems = pgTable("shop_items", {
   id: uuid("id").defaultRandom().primaryKey(),
-  itemId: text("item_id").references(() => items.id),
-  buildingId: text("building_id").references(() => buildings.id),
-  animalId: text("animal_id").references(() => animals.id),
+  itemId: integer("item_id").references(() => items.id),
+  buildingId: integer("building_id").references(() => buildings.id),
+  animalId: integer("animal_id").references(() => animals.id),
   coinPrice: integer("coin_price").default(0).notNull(),
   gemPrice: integer("gem_price").default(0).notNull(),
   quantity: integer("quantity").default(1).notNull(),
@@ -154,8 +159,8 @@ export const shopItems = pgTable("shop_items", {
 
 export const marketplaceListings = pgTable("marketplace_listings", {
   id: uuid("id").defaultRandom().primaryKey(),
-  sellerId: uuid("seller_id").references(() => users.id).notNull(),
-  itemId: text("item_id").references(() => items.id).notNull(),
+  sellerId: integer("seller_id").references(() => users.id).notNull(),
+  itemId: integer("item_id").references(() => items.id).notNull(),
   quantity: integer("quantity").notNull(),
   coinPrice: integer("coin_price").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull()

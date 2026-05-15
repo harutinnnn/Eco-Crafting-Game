@@ -72,6 +72,7 @@ export const upsertItem = async (payload: typeof items.$inferInsert) => {
       target: items.id,
       set: {
         name: payload.name,
+        code: payload.code,
         category: payload.category,
         minLevel: payload.minLevel,
         tradable: payload.tradable,
@@ -90,6 +91,7 @@ export const upsertRecipe = async (payload: typeof recipes.$inferInsert) => {
       target: recipes.id,
       set: {
         name: payload.name,
+        code: payload.code,
         buildingType: payload.buildingType,
         minLevel: payload.minLevel,
         energyCost: payload.energyCost,
@@ -109,6 +111,7 @@ export const upsertBuilding = async (payload: typeof buildings.$inferInsert) => 
       target: buildings.id,
       set: {
         name: payload.name,
+        code: payload.code,
         type: payload.type,
         minLevel: payload.minLevel,
         coinCost: payload.coinCost,
@@ -126,6 +129,7 @@ export const upsertAnimal = async (payload: typeof animals.$inferInsert) => {
       target: animals.id,
       set: {
         name: payload.name,
+        code: payload.code,
         productItemId: payload.productItemId,
         minLevel: payload.minLevel,
         energyCost: payload.energyCost,
@@ -135,7 +139,7 @@ export const upsertAnimal = async (payload: typeof animals.$inferInsert) => {
     });
 };
 
-export const updateIconUrl = async (entity: string, id: string, iconUrl: string) => {
+export const updateIconUrl = async (entity: string, id: number, iconUrl: string) => {
   switch (entity) {
     case "items":
       await db.update(items).set({ iconUrl }).where(eq(items.id, id));
@@ -151,11 +155,11 @@ export const updateIconUrl = async (entity: string, id: string, iconUrl: string)
   }
 };
 
-export const updateProfile = async (userId: string, payload: Partial<typeof profiles.$inferInsert>) => {
+export const updateProfile = async (userId: number, payload: Partial<typeof profiles.$inferInsert>) => {
   await db.update(profiles).set(payload).where(eq(profiles.userId, userId));
 };
 
-export const updateUser = async (userId: string, payload: Pick<typeof users.$inferInsert, "username" | "email" | "isAdmin">) => {
+export const updateUser = async (userId: number, payload: Pick<typeof users.$inferInsert, "username" | "email" | "isAdmin">) => {
   await db.update(users).set(payload).where(eq(users.id, userId));
 };
 
@@ -192,18 +196,19 @@ export const upsertMarketplaceListing = async (payload: typeof marketplaceListin
 };
 
 export const deleteRow = async (tableName: string, id: string) => {
+  const numericId = Number(id);
   switch (tableName) {
     case "items":
-      await db.delete(items).where(eq(items.id, id));
+      await db.delete(items).where(eq(items.id, numericId));
       break;
     case "recipes":
-      await db.delete(recipes).where(eq(recipes.id, id));
+      await db.delete(recipes).where(eq(recipes.id, numericId));
       break;
     case "buildings":
-      await db.delete(buildings).where(eq(buildings.id, id));
+      await db.delete(buildings).where(eq(buildings.id, numericId));
       break;
     case "animals":
-      await db.delete(animals).where(eq(animals.id, id));
+      await db.delete(animals).where(eq(animals.id, numericId));
       break;
     case "marketplace":
       await db.delete(marketplaceListings).where(eq(marketplaceListings.id, id));

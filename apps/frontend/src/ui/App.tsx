@@ -59,14 +59,14 @@ const primaryButtonClass =
 
 const authBaseUrl = "http://localhost:4000";
 
-const itemName = (items: GameItem[], itemId: string) => items.find((item) => item.id === itemId)?.name ?? itemId;
-const itemById = (items: GameItem[], itemId: string) => items.find((item) => item.id === itemId);
+const itemName = (items: GameItem[], itemId: number) => items.find((item) => item.id === itemId)?.name ?? String(itemId);
+const itemById = (items: GameItem[], itemId: number) => items.find((item) => item.id === itemId);
 const assetUrl = (url?: string | null) => {
   if (!url) return undefined;
   return url.startsWith("/uploads/") ? `${authBaseUrl}${url}` : url;
 };
 
-const quantityOf = (inventory: InventoryEntry[], itemId: string) =>
+const quantityOf = (inventory: InventoryEntry[], itemId: number) =>
   inventory.find((entry) => entry.itemId === itemId)?.quantity ?? 0;
 
 export function App() {
@@ -487,9 +487,10 @@ function AdminPanel() {
 
   const newRow = () => {
     const templates: Record<AdminSection, Record<string, string | boolean>> = {
-      items: { id: "new_item", name: "New Item", category: "material", minLevel: "1", tradable: true, sellable: true, energyRestore: "", iconUrl: "" },
+      items: { id: "", code: "new_item", name: "New Item", category: "material", minLevel: "1", tradable: true, sellable: true, energyRestore: "", iconUrl: "" },
       recipes: {
-        id: "new_recipe",
+        id: "",
+        code: "new_recipe",
         name: "New Recipe",
         buildingType: "bakery",
         minLevel: "1",
@@ -499,11 +500,11 @@ function AdminPanel() {
         outputs: JSON.stringify([{ itemId: "bread", quantity: 1 }]),
         createdByAdmin: true
       },
-      buildings: { id: "new_building", name: "New Building", type: "factory", minLevel: "1", coinCost: "0", gemCost: "0", iconUrl: "" },
-      animals: { id: "new_animal", name: "New Animal", productItemId: data?.items[0]?.id ?? "egg", minLevel: "1", energyCost: "1", xpReward: "1", iconUrl: "" },
-      users: { id: data?.users[0]?.id ?? "", username: data?.users[0]?.username ?? "", email: data?.users[0]?.email ?? "", isAdmin: data?.users[0]?.isAdmin ?? false },
+      buildings: { id: "", code: "new_building", name: "New Building", type: "factory", minLevel: "1", coinCost: "0", gemCost: "0", iconUrl: "" },
+      animals: { id: "", code: "new_animal", name: "New Animal", productItemId: String(data?.items[0]?.id ?? ""), minLevel: "1", energyCost: "1", xpReward: "1", iconUrl: "" },
+      users: { id: String(data?.users[0]?.id ?? ""), username: data?.users[0]?.username ?? "", email: data?.users[0]?.email ?? "", isAdmin: data?.users[0]?.isAdmin ?? false },
       profiles: {
-        userId: data?.profiles[0]?.userId ?? "",
+        userId: String(data?.profiles[0]?.userId ?? ""),
         level: "1",
         xp: "0",
         energy: "50",
@@ -511,8 +512,8 @@ function AdminPanel() {
         coins: "250",
         gems: "10"
       },
-      inventory: { userId: data?.users[0]?.id ?? "", itemId: data?.items[0]?.id ?? "", quantity: "1" },
-      marketplace: { sellerId: data?.users[0]?.id ?? "", itemId: data?.items[0]?.id ?? "", quantity: "1", coinPrice: "1" }
+      inventory: { userId: String(data?.users[0]?.id ?? ""), itemId: String(data?.items[0]?.id ?? ""), quantity: "1" },
+      marketplace: { sellerId: String(data?.users[0]?.id ?? ""), itemId: String(data?.items[0]?.id ?? ""), quantity: "1", coinPrice: "1" }
     };
     setForm(templates[section]);
     setIconFile(null);
@@ -533,7 +534,9 @@ function AdminPanel() {
         result = await postAdmin(`/api/admin/${section}`, parsed);
       }
       if (iconFile && ["items", "buildings", "animals"].includes(section)) {
-        result = await uploadAdminIcon(section as "items" | "buildings" | "animals", String(parsed.id), iconFile);
+        const savedRows = result.data[section as "items" | "buildings" | "animals"] as Array<{ id: number; code?: string }>;
+        const savedId = parsed.id ?? savedRows.find((row) => row.code === parsed.code)?.id;
+        result = await uploadAdminIcon(section as "items" | "buildings" | "animals", String(savedId), iconFile);
       }
       setData(result.data);
       setStatus("Saved.");
@@ -662,7 +665,8 @@ function normalizeAdminForm(section: AdminSection, form: Record<string, string |
 
   if (section === "items") {
     return {
-      id: String(form.id),
+      id: String(form.id || "") ? Number(form.id) : undefined,
+      code: String(form.code),
       name: String(form.name),
       category: String(form.category),
       minLevel: number("minLevel"),
@@ -674,7 +678,8 @@ function normalizeAdminForm(section: AdminSection, form: Record<string, string |
   }
   if (section === "recipes") {
     return {
-      id: String(form.id),
+      id: String(form.id || "") ? Number(form.id) : undefined,
+      code: String(form.code),
       name: String(form.name),
       buildingType: String(form.buildingType),
       minLevel: number("minLevel"),
@@ -687,7 +692,8 @@ function normalizeAdminForm(section: AdminSection, form: Record<string, string |
   }
   if (section === "buildings") {
     return {
-      id: String(form.id),
+      id: String(form.id || "") ? Number(form.id) : undefined,
+      code: String(form.code),
       name: String(form.name),
       type: String(form.type),
       minLevel: number("minLevel"),
@@ -698,7 +704,8 @@ function normalizeAdminForm(section: AdminSection, form: Record<string, string |
   }
   if (section === "animals") {
     return {
-      id: String(form.id),
+      id: String(form.id || "") ? Number(form.id) : undefined,
+      code: String(form.code),
       name: String(form.name),
       productItemId: String(form.productItemId),
       minLevel: number("minLevel"),
@@ -816,14 +823,15 @@ function AdminForm({
     </div>
   ) : null;
 
-  const userOptions = data?.users.map((user) => user.id) ?? [];
-  const itemOptions = data?.items.map((item) => item.id) ?? [];
+  const userOptions = data?.users.map((user) => String(user.id)) ?? [];
+  const itemOptions = data?.items.map((item) => String(item.id)) ?? [];
 
   return (
     <div className="mt-4 grid gap-3 md:grid-cols-2">
       {section === "items" && (
         <>
-          {text("id", "ID")}
+          {text("id", "Numeric ID", "number")}
+          {text("code", "Code")}
           {text("name", "Name")}
           {select("category", "Category", ["seed", "crop", "food", "animal", "animal_product", "material", "tool", "clothing"])}
           {text("minLevel", "Minimum Level", "number")}
@@ -836,7 +844,8 @@ function AdminForm({
       )}
       {section === "recipes" && (
         <>
-          {text("id", "ID")}
+          {text("id", "Numeric ID", "number")}
+          {text("code", "Code")}
           {text("name", "Name")}
           {select("buildingType", "Building Type", ["bakery", "restaurant", "factory", "barn", "field"])}
           {text("minLevel", "Minimum Level", "number")}
@@ -849,7 +858,8 @@ function AdminForm({
       )}
       {section === "buildings" && (
         <>
-          {text("id", "ID")}
+          {text("id", "Numeric ID", "number")}
+          {text("code", "Code")}
           {text("name", "Name")}
           {select("type", "Type", ["bakery", "restaurant", "factory", "barn", "field"])}
           {text("minLevel", "Minimum Level", "number")}
@@ -861,7 +871,8 @@ function AdminForm({
       )}
       {section === "animals" && (
         <>
-          {text("id", "ID")}
+          {text("id", "Numeric ID", "number")}
+          {text("code", "Code")}
           {text("name", "Name")}
           {select("productItemId", "Product Item", itemOptions)}
           {text("minLevel", "Minimum Level", "number")}
@@ -993,7 +1004,7 @@ function Inventory({
 }: {
   inventory: InventoryEntry[];
   items: GameItem[];
-  onEat: (itemId: string) => void;
+  onEat: (itemId: number) => void;
 }) {
   return (
     <section className="flex min-h-16 flex-wrap items-center gap-2 rounded-lg border border-stone-200 bg-white/90 p-3 shadow-sm">
