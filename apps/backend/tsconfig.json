@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "paths": {
+      "@eco-crafting/shared": ["../../packages/shared/src"]
+    }
+  },
+  "include": ["src", "drizzle.config.ts", "vite.config.ts"]
+}

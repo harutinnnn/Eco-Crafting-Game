@@ -1,0 +1,22 @@
+{
+  "name": "eco-crafting-project",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @eco-crafting/backend",
+    "dev:frontend": "npm run dev -w @eco-crafting/frontend",
+    "dev:backend": "npm run dev -w @eco-crafting/backend",
+    "build": "npm run build -w @eco-crafting/shared && npm run build -w @eco-crafting/backend && npm run build -w @eco-crafting/frontend",
+    "check": "npm run check -w @eco-crafting/shared && npm run check -w @eco-crafting/backend && npm run check -w @eco-crafting/frontend",
+    "db:generate": "npm run db:generate -w @eco-crafting/backend",
+    "db:push": "npm run db:push -w @eco-crafting/backend"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

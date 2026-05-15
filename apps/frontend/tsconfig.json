@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "paths": {
+      "@eco-crafting/shared": ["../../packages/shared/src"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}
